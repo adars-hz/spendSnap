@@ -113,3 +113,4 @@ export const DEFAULT_CATEGORIES: Category[] = [
     type: 'income',
   },
 ];
+

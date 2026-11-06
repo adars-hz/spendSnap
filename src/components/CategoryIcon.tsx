@@ -16,3 +16,4 @@ export const CategoryIcon: React.FC<CategoryIconProps> = ({
   const IconComponent = Icons[name] || Icons.CircleDot;
   return <IconComponent size={size} color={color} />;
 };
+

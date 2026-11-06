@@ -184,3 +184,4 @@ export const exportTransactionsToPdf = async (
     return { success: false, message: 'Failed to export PDF.' };
   }
 };
+

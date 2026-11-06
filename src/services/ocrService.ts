@@ -145,3 +145,4 @@ export const parseReceiptImage = async (
     confidence: 0.88,
   };
 };
+

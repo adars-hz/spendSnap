@@ -195,3 +195,4 @@ export const SAMPLE_TRANSACTIONS: Transaction[] = [
     createdAt: Date.now() - 86400000 * 8,
   },
 ];
+

@@ -24,3 +24,4 @@ export const formatCurrency = (amount: number, currencyCode: string = 'USD'): st
   });
   return `${amount < 0 ? '-' : ''}${currency.symbol}${formattedNumber}`;
 };
+

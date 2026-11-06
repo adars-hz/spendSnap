@@ -58,3 +58,4 @@ export interface SavingsGoal {
 export type TabType = 'home' | 'analytics' | 'snap' | 'budgets' | 'wallets';
 
 export type DateFilterRange = 'this_month' | 'last_month' | 'last_30_days' | 'this_year' | 'all';
+
