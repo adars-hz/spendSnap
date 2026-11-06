@@ -42,10 +42,10 @@ interface ExpenseState {
 export const useExpenseStore = create<ExpenseState>()(
   persist(
     (set, get) => ({
-      transactions: SAMPLE_TRANSACTIONS,
+      transactions: [],
       accounts: DEFAULT_ACCOUNTS,
       categories: DEFAULT_CATEGORIES,
-      goals: DEFAULT_GOALS,
+      goals: [],
       currency: 'USD',
       isDarkMode: true,
       filterAccountId: null,
@@ -217,13 +217,22 @@ export const useExpenseStore = create<ExpenseState>()(
           accounts: [
             {
               id: 'acc-main',
-              name: 'Cash / Main',
+              name: 'Main Checking',
+              type: 'bank',
+              balance: 0,
+              currency: 'USD',
+              color: '#3B82F6',
+              icon: 'Building2',
+              isDefault: true,
+            },
+            {
+              id: 'acc-cash',
+              name: 'Cash Wallet',
               type: 'cash',
               balance: 0,
               currency: 'USD',
-              color: '#10B981',
+              color: '#F59E0B',
               icon: 'Wallet',
-              isDefault: true,
             },
           ],
           categories: DEFAULT_CATEGORIES,
@@ -232,9 +241,8 @@ export const useExpenseStore = create<ExpenseState>()(
       },
     }),
     {
-      name: 'spendsnap-storage',
+      name: 'spendsnap-data-clean',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )
 );
-

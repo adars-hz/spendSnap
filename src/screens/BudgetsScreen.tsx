@@ -9,12 +9,11 @@ import {
   Modal,
   Alert,
 } from 'react-native';
-import { Target, Repeat, PiggyBank, Plus, Edit2, AlertTriangle, Check, X } from 'lucide-react-native';
+import { Target, Repeat, PiggyBank, Plus, Edit2, AlertTriangle } from 'lucide-react-native';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { darkTheme, lightTheme } from '../constants/theme';
 import { formatCurrency } from '../constants/currencies';
-import { SavingsGoal } from '../types';
 
 export const BudgetsScreen: React.FC = () => {
   const {
@@ -88,6 +87,9 @@ export const BudgetsScreen: React.FC = () => {
     setShowAddGoalModal(false);
   };
 
+  const expenseCategories = categories.filter((c) => c.type === 'expense');
+  const budgetedCategories = expenseCategories.filter((c) => (c.budgetLimit || 0) > 0);
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.background }]}
@@ -106,7 +108,9 @@ export const BudgetsScreen: React.FC = () => {
                 Active Subscriptions
               </Text>
               <Text style={[styles.subCardSub, { color: theme.textMuted }]}>
-                {subscriptionTxs.length} recurring services
+                {subscriptionTxs.length > 0
+                  ? `${subscriptionTxs.length} recurring services`
+                  : 'No recurring bills logged yet'}
               </Text>
             </View>
           </View>
@@ -115,14 +119,20 @@ export const BudgetsScreen: React.FC = () => {
           </Text>
         </View>
 
-        {subscriptionTxs.map((sub) => (
-          <View key={sub.id} style={[styles.subItemRow, { borderTopColor: theme.border }]}>
-            <Text style={[styles.subItemName, { color: theme.text }]}>{sub.note}</Text>
-            <Text style={[styles.subItemAmount, { color: theme.textSecondary }]}>
-              {formatCurrency(sub.amount, currency)}
-            </Text>
-          </View>
-        ))}
+        {subscriptionTxs.length > 0 ? (
+          subscriptionTxs.map((sub) => (
+            <View key={sub.id} style={[styles.subItemRow, { borderTopColor: theme.border }]}>
+              <Text style={[styles.subItemName, { color: theme.text }]}>{sub.note}</Text>
+              <Text style={[styles.subItemAmount, { color: theme.textSecondary }]}>
+                {formatCurrency(sub.amount, currency)}
+              </Text>
+            </View>
+          ))
+        ) : (
+          <Text style={[styles.emptyHintText, { color: theme.textMuted }]}>
+            Toggle &quot;Recurring Subscription&quot; when adding an expense to track services like Netflix, Gym, or Rent.
+          </Text>
+        )}
       </View>
 
       {/* Category Budgets Section */}
@@ -132,9 +142,8 @@ export const BudgetsScreen: React.FC = () => {
           <Text style={[styles.sectionSubtitle, { color: theme.textMuted }]}>Monthly Caps</Text>
         </View>
 
-        {categories
-          .filter((c) => c.type === 'expense' && (c.budgetLimit || 0) > 0)
-          .map((cat) => {
+        {budgetedCategories.length > 0 ? (
+          budgetedCategories.map((cat) => {
             const spent = categorySpentMap[cat.id] || 0;
             const limit = cat.budgetLimit || 1;
             const percentage = Math.min(Math.round((spent / limit) * 100), 100);
@@ -205,7 +214,37 @@ export const BudgetsScreen: React.FC = () => {
                 )}
               </View>
             );
-          })}
+          })
+        ) : null}
+
+        {/* Set Budget on Any Category Pill Row */}
+        <View style={[styles.setupBudgetBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.setupBudgetTitle, { color: theme.text }]}>
+            {budgetedCategories.length === 0
+              ? 'Set Monthly Spending Caps'
+              : 'Add Another Budget Cap'}
+          </Text>
+          <Text style={[styles.setupBudgetSub, { color: theme.textMuted }]}>
+            Select a category to set its monthly budget:
+          </Text>
+          <View style={styles.catChipsGrid}>
+            {expenseCategories
+              .filter((c) => !c.budgetLimit || c.budgetLimit <= 0)
+              .map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[styles.catChip, { backgroundColor: theme.surfaceSubtle, borderColor: theme.border }]}
+                  onPress={() => {
+                    setEditingCategoryId(cat.id);
+                    setEditLimitStr('300');
+                  }}
+                >
+                  <CategoryIcon name={cat.icon} size={14} color={cat.color} />
+                  <Text style={[styles.catChipText, { color: theme.text }]}>+ {cat.name}</Text>
+                </TouchableOpacity>
+              ))}
+          </View>
+        </View>
       </View>
 
       {/* Savings Goals Section */}
@@ -221,63 +260,77 @@ export const BudgetsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {goals.map((goal) => {
-          const pct = Math.min(Math.round((goal.currentAmount / goal.targetAmount) * 100), 100);
+        {goals.length > 0 ? (
+          goals.map((goal) => {
+            const pct = Math.min(Math.round((goal.currentAmount / goal.targetAmount) * 100), 100);
 
-          return (
-            <View
-              key={goal.id}
-              style={[styles.goalCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-            >
-              <View style={styles.goalTopRow}>
-                <View style={styles.goalLeft}>
-                  <View style={[styles.goalIconWrap, { backgroundColor: goal.color }]}>
-                    <CategoryIcon name={goal.icon} size={18} color="#FFFFFF" />
+            return (
+              <View
+                key={goal.id}
+                style={[styles.goalCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+              >
+                <View style={styles.goalTopRow}>
+                  <View style={styles.goalLeft}>
+                    <View style={[styles.goalIconWrap, { backgroundColor: goal.color }]}>
+                      <CategoryIcon name={goal.icon} size={18} color="#FFFFFF" />
+                    </View>
+                    <View>
+                      <Text style={[styles.goalName, { color: theme.text }]}>{goal.name}</Text>
+                      <Text style={[styles.goalTarget, { color: theme.textMuted }]}>
+                        Target: {formatCurrency(goal.targetAmount, currency)}
+                      </Text>
+                    </View>
                   </View>
-                  <View>
-                    <Text style={[styles.goalName, { color: theme.text }]}>{goal.name}</Text>
-                    <Text style={[styles.goalTarget, { color: theme.textMuted }]}>
-                      Target: {formatCurrency(goal.targetAmount, currency)}
+
+                  <View style={styles.goalBoostBtns}>
+                    <TouchableOpacity
+                      style={[styles.boostBtn, { backgroundColor: theme.surfaceSubtle }]}
+                      onPress={() => updateGoalProgress(goal.id, 50)}
+                    >
+                      <Text style={[styles.boostBtnText, { color: theme.primary }]}>+$50</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.boostBtn, { backgroundColor: theme.surfaceSubtle }]}
+                      onPress={() => updateGoalProgress(goal.id, 100)}
+                    >
+                      <Text style={[styles.boostBtnText, { color: theme.primary }]}>+$100</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Goal Progress bar */}
+                <View style={styles.goalProgressWrap}>
+                  <View style={[styles.progressTrack, { backgroundColor: theme.surfaceSubtle }]}>
+                    <View
+                      style={[
+                        styles.progressBar,
+                        { width: `${pct}%`, backgroundColor: goal.color },
+                      ]}
+                    />
+                  </View>
+                  <View style={styles.goalProgressLabels}>
+                    <Text style={[styles.goalSavedLabel, { color: theme.text }]}>
+                      {formatCurrency(goal.currentAmount, currency)} saved
                     </Text>
+                    <Text style={[styles.goalPctLabel, { color: goal.color }]}>{pct}%</Text>
                   </View>
                 </View>
-
-                <View style={styles.goalBoostBtns}>
-                  <TouchableOpacity
-                    style={[styles.boostBtn, { backgroundColor: theme.surfaceSubtle }]}
-                    onPress={() => updateGoalProgress(goal.id, 50)}
-                  >
-                    <Text style={[styles.boostBtnText, { color: theme.primary }]}>+$50</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.boostBtn, { backgroundColor: theme.surfaceSubtle }]}
-                    onPress={() => updateGoalProgress(goal.id, 100)}
-                  >
-                    <Text style={[styles.boostBtnText, { color: theme.primary }]}>+$100</Text>
-                  </TouchableOpacity>
-                </View>
               </View>
-
-              {/* Goal Progress bar */}
-              <View style={styles.goalProgressWrap}>
-                <View style={[styles.progressTrack, { backgroundColor: theme.surfaceSubtle }]}>
-                  <View
-                    style={[
-                      styles.progressBar,
-                      { width: `${pct}%`, backgroundColor: goal.color },
-                    ]}
-                  />
-                </View>
-                <View style={styles.goalProgressLabels}>
-                  <Text style={[styles.goalSavedLabel, { color: theme.text }]}>
-                    {formatCurrency(goal.currentAmount, currency)} saved
-                  </Text>
-                  <Text style={[styles.goalPctLabel, { color: goal.color }]}>{pct}%</Text>
-                </View>
-              </View>
-            </View>
-          );
-        })}
+            );
+          })
+        ) : (
+          <TouchableOpacity
+            style={[styles.emptyGoalCard, { backgroundColor: theme.surfaceSubtle }]}
+            onPress={() => setShowAddGoalModal(true)}
+            activeOpacity={0.7}
+          >
+            <PiggyBank size={32} color={theme.primary} />
+            <Text style={[styles.emptyGoalTitle, { color: theme.text }]}>No Savings Goals Yet</Text>
+            <Text style={[styles.emptyGoalSub, { color: theme.textMuted }]}>
+              Set up targets like Emergency Fund, Vacation, or New Gadget.
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Edit Budget Modal */}
@@ -412,6 +465,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  emptyHintText: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+  },
   section: {
     gap: 12,
   },
@@ -493,6 +551,38 @@ const styles = StyleSheet.create({
     color: '#F43F5E',
     fontWeight: '700',
   },
+  setupBudgetBox: {
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    gap: 8,
+  },
+  setupBudgetTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  setupBudgetSub: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  catChipsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  catChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  catChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   addGoalBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -565,6 +655,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
+  emptyGoalCard: {
+    borderRadius: 18,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  emptyGoalTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  emptyGoalSub: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -607,4 +713,3 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
-

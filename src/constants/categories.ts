@@ -8,7 +8,6 @@ export const DEFAULT_CATEGORIES: Category[] = [
     icon: 'Utensils',
     color: '#F97316',
     type: 'expense',
-    budgetLimit: 450,
   },
   {
     id: 'cat-groceries',
@@ -16,7 +15,6 @@ export const DEFAULT_CATEGORIES: Category[] = [
     icon: 'ShoppingCart',
     color: '#10B981',
     type: 'expense',
-    budgetLimit: 400,
   },
   {
     id: 'cat-shopping',
@@ -24,7 +22,6 @@ export const DEFAULT_CATEGORIES: Category[] = [
     icon: 'ShoppingBag',
     color: '#EC4899',
     type: 'expense',
-    budgetLimit: 250,
   },
   {
     id: 'cat-transport',
@@ -32,7 +29,6 @@ export const DEFAULT_CATEGORIES: Category[] = [
     icon: 'Car',
     color: '#3B82F6',
     type: 'expense',
-    budgetLimit: 180,
   },
   {
     id: 'cat-housing',
@@ -40,7 +36,6 @@ export const DEFAULT_CATEGORIES: Category[] = [
     icon: 'Home',
     color: '#8B5CF6',
     type: 'expense',
-    budgetLimit: 1200,
   },
   {
     id: 'cat-bills',
@@ -48,7 +43,6 @@ export const DEFAULT_CATEGORIES: Category[] = [
     icon: 'Zap',
     color: '#EAB308',
     type: 'expense',
-    budgetLimit: 200,
   },
   {
     id: 'cat-entertainment',
@@ -56,7 +50,6 @@ export const DEFAULT_CATEGORIES: Category[] = [
     icon: 'Film',
     color: '#06B6D4',
     type: 'expense',
-    budgetLimit: 150,
   },
   {
     id: 'cat-health',
@@ -64,7 +57,6 @@ export const DEFAULT_CATEGORIES: Category[] = [
     icon: 'HeartPulse',
     color: '#EF4444',
     type: 'expense',
-    budgetLimit: 120,
   },
   {
     id: 'cat-travel',
@@ -72,7 +64,6 @@ export const DEFAULT_CATEGORIES: Category[] = [
     icon: 'Plane',
     color: '#14B8A6',
     type: 'expense',
-    budgetLimit: 300,
   },
   {
     id: 'cat-subscriptions',
@@ -80,7 +71,6 @@ export const DEFAULT_CATEGORIES: Category[] = [
     icon: 'Repeat',
     color: '#6366F1',
     type: 'expense',
-    budgetLimit: 80,
   },
 
   // Incomes
@@ -113,4 +103,3 @@ export const DEFAULT_CATEGORIES: Category[] = [
     type: 'income',
   },
 ];
-

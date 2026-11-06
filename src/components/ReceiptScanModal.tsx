@@ -79,12 +79,6 @@ export const ReceiptScanModal: React.FC<ReceiptScanModalProps> = ({ visible, onC
     }
   };
 
-  // Demo presets for immediate test drive without real camera/photo
-  const handleDemoReceipt = (hint: string) => {
-    const mockUri = `https://images.unsplash.com/photo-1554415707-9e4466b88738?auto=format&fit=crop&w=400&q=80`;
-    processReceipt(mockUri, hint);
-  };
-
   const processReceipt = async (uri: string, hint?: string) => {
     setImageUri(uri);
     setIsScanning(true);
@@ -178,35 +172,6 @@ export const ReceiptScanModal: React.FC<ReceiptScanModalProps> = ({ visible, onC
                     <ImageIcon size={18} color="#FFFFFF" />
                     <Text style={styles.primaryActionBtnText}>Photo Library</Text>
                   </TouchableOpacity>
-                </View>
-
-                {/* Instant Demo Presets */}
-                <View style={styles.presetsSection}>
-                  <Text style={[styles.presetTitle, { color: theme.textMuted }]}>
-                    OR TEST WITH ONE-TAP RECEIPT PRESETS
-                  </Text>
-                  <View style={styles.presetButtons}>
-                    <TouchableOpacity
-                      style={[styles.presetBtn, { backgroundColor: theme.surfaceSubtle }]}
-                      onPress={() => handleDemoReceipt('starbucks')}
-                    >
-                      <Text style={[styles.presetBtnText, { color: theme.text }]}>☕ Starbucks Cafe</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.presetBtn, { backgroundColor: theme.surfaceSubtle }]}
-                      onPress={() => handleDemoReceipt('whole foods')}
-                    >
-                      <Text style={[styles.presetBtnText, { color: theme.text }]}>🛒 Whole Foods</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.presetBtn, { backgroundColor: theme.surfaceSubtle }]}
-                      onPress={() => handleDemoReceipt('uber')}
-                    >
-                      <Text style={[styles.presetBtnText, { color: theme.text }]}>🚗 Uber Ride</Text>
-                    </TouchableOpacity>
-                  </View>
                 </View>
               </View>
             )}
@@ -388,30 +353,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
-  },
-  presetsSection: {
-    marginTop: 10,
-    gap: 10,
-  },
-  presetTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  presetButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  presetBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  presetBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   scanningBox: {
     paddingVertical: 60,

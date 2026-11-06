@@ -14,7 +14,6 @@ import {
   Coins,
   FileSpreadsheet,
   FileText,
-  RefreshCw,
   Trash2,
   ChevronRight,
   ShieldCheck,
@@ -40,7 +39,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ visible, onClose
     transactions,
     categories,
     accounts,
-    loadSampleData,
     resetAllData,
   } = useExpenseStore();
   const theme = isDarkMode ? darkTheme : lightTheme;
@@ -80,11 +78,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ visible, onClose
         },
       ]
     );
-  };
-
-  const handleLoadDemo = () => {
-    loadSampleData();
-    Alert.alert('Demo Data Loaded', 'Sample transactions, budgets, and wallets have been restored.');
   };
 
   return (
@@ -192,24 +185,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ visible, onClose
           {/* Data Management Section */}
           <View style={styles.section}>
             <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>DATA MANAGEMENT</Text>
-
-            <TouchableOpacity
-              style={[styles.rowItem, { backgroundColor: theme.card, borderColor: theme.border }]}
-              onPress={handleLoadDemo}
-            >
-              <View style={styles.rowLeft}>
-                <View style={[styles.iconWrap, { backgroundColor: '#E0E7FF' }]}>
-                  <RefreshCw size={18} color="#4338CA" />
-                </View>
-                <View>
-                  <Text style={[styles.rowTitle, { color: theme.text }]}>Restore Demo Data</Text>
-                  <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                    Load realistic sample transactions & wallets
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={18} color={theme.textMuted} />
-            </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.rowItem, { backgroundColor: theme.card, borderColor: theme.border }]}

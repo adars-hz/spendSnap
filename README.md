@@ -15,7 +15,6 @@
 - **Camera & Photo Library Scanning:** Snap a picture of a bill/invoice or choose from your gallery.
 - **Intelligent Field Extraction:** Automatically extracts Merchant Name, Date, Total Amount, Tax, and itemized line items.
 - **One-Tap Commit:** Validates extracted receipts and auto-categorizes with a single tap.
-- **Instant Demo Presets:** Test receipt extraction instantly with one-click presets (Starbucks, Whole Foods, Uber).
 
 ### 3. 🎯 Budgets, Goals & Subscriptions
 - **Category Spending Caps:** Set monthly budgets per category with real-time percentage indicators.
@@ -136,3 +135,4 @@ SpendSnap/
 ├── app.json                # Expo project configuration
 └── package.json
 ```
+
