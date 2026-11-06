@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Check,
   X,
+  Lock,
 } from 'lucide-react-native';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { darkTheme, lightTheme } from '../constants/theme';
@@ -40,6 +41,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ visible, onClose
     categories,
     accounts,
     resetAllData,
+    isSecurityEnabled,
+    pinCode,
+    setSecurity,
   } = useExpenseStore();
   const theme = isDarkMode ? darkTheme : lightTheme;
 
@@ -136,6 +140,41 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ visible, onClose
                 </View>
               </View>
               <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 13 }}>Toggle</Text>
+            </TouchableOpacity>
+
+            {/* App Lock & Security */}
+            <TouchableOpacity
+              style={[styles.rowItem, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={() => {
+                if (isSecurityEnabled) {
+                  setSecurity(false);
+                  Alert.alert('Security Disabled', 'App lock has been turned off.');
+                } else {
+                  setSecurity(true, '1234');
+                  Alert.alert('Security Enabled', 'App lock enabled with default PIN: 1234. You can also use Biometrics (Face ID/Fingerprint).');
+                }
+              }}
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconWrap, { backgroundColor: isSecurityEnabled ? '#DCFCE7' : '#F1F5F9' }]}>
+                  <Lock size={18} color={isSecurityEnabled ? '#16A34A' : theme.textMuted} />
+                </View>
+                <View>
+                  <Text style={[styles.rowTitle, { color: theme.text }]}>Biometric & PIN Lock</Text>
+                  <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                    {isSecurityEnabled ? 'Protected (PIN: 1234 / Biometrics)' : 'Disabled'}
+                  </Text>
+                </View>
+              </View>
+              <Text
+                style={{
+                  color: isSecurityEnabled ? '#16A34A' : theme.textMuted,
+                  fontWeight: '700',
+                  fontSize: 13,
+                }}
+              >
+                {isSecurityEnabled ? 'Active' : 'Off'}
+              </Text>
             </TouchableOpacity>
           </View>
 

@@ -13,6 +13,8 @@ interface ExpenseState {
   currency: string;
   isDarkMode: boolean;
   filterAccountId: string | null;
+  isSecurityEnabled: boolean;
+  pinCode: string | null;
 
   // Transaction Actions
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => void;
@@ -35,6 +37,7 @@ interface ExpenseState {
   // System & Settings Actions
   setCurrency: (currency: string) => void;
   toggleTheme: () => void;
+  setSecurity: (enabled: boolean, pin?: string) => void;
   loadSampleData: () => void;
   resetAllData: () => void;
 }
@@ -49,6 +52,8 @@ export const useExpenseStore = create<ExpenseState>()(
       currency: 'USD',
       isDarkMode: true,
       filterAccountId: null,
+      isSecurityEnabled: false,
+      pinCode: null,
 
       addTransaction: (txData) => {
         const id = 'tx_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
@@ -200,6 +205,13 @@ export const useExpenseStore = create<ExpenseState>()(
 
       toggleTheme: () => {
         set((state) => ({ isDarkMode: !state.isDarkMode }));
+      },
+
+      setSecurity: (enabled, pin) => {
+        set({
+          isSecurityEnabled: enabled,
+          pinCode: enabled ? pin || null : null,
+        });
       },
 
       loadSampleData: () => {

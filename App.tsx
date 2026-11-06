@@ -13,9 +13,10 @@ import { AnalyticsScreen } from './src/screens/AnalyticsScreen';
 import { BudgetsScreen } from './src/screens/BudgetsScreen';
 import { WalletsScreen } from './src/screens/WalletsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { SecurityLockModal } from './src/components/SecurityLockModal';
 
 export default function App() {
-  const { isDarkMode } = useExpenseStore();
+  const { isDarkMode, isSecurityEnabled } = useExpenseStore();
   const theme = isDarkMode ? darkTheme : lightTheme;
 
   const [currentTab, setCurrentTab] = useState<TabType>('home');
@@ -23,6 +24,7 @@ export default function App() {
   const [addTxType, setAddTxType] = useState<TransactionType>('expense');
   const [showSnapModal, setShowSnapModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [isLocked, setIsLocked] = useState(isSecurityEnabled);
 
   const handleOpenAddModal = (type: TransactionType = 'expense') => {
     setAddTxType(type);
@@ -97,6 +99,14 @@ export default function App() {
           visible={showSettingsModal}
           onClose={() => setShowSettingsModal(false)}
         />
+
+        {/* Security / Biometric Lock Screen */}
+        {isSecurityEnabled && (
+          <SecurityLockModal
+            visible={isLocked}
+            onUnlocked={() => setIsLocked(false)}
+          />
+        )}
       </View>
     </SafeAreaView>
   );

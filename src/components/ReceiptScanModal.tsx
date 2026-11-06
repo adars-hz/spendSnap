@@ -8,14 +8,27 @@ import {
   Image,
   ActivityIndicator,
   ScrollView,
+  TextInput,
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { X, Camera, Image as ImageIcon, CheckCircle2, Sparkles, RefreshCw } from 'lucide-react-native';
+import {
+  X,
+  Camera,
+  Image as ImageIcon,
+  CheckCircle2,
+  Sparkles,
+  RefreshCw,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react-native';
 import { parseReceiptImage, ScannedReceiptResult } from '../services/ocrService';
 import { useExpenseStore } from '../store/useExpenseStore';
 import { darkTheme, lightTheme } from '../constants/theme';
-import { formatCurrency } from '../constants/currencies';
+import { CURRENCIES, formatCurrency } from '../constants/currencies';
+import { CategoryIcon } from './CategoryIcon';
+import { triggerSuccessHaptic, triggerLightHaptic } from '../services/hapticsService';
 
 interface ReceiptScanModalProps {
   visible: boolean;
@@ -25,10 +38,18 @@ interface ReceiptScanModalProps {
 export const ReceiptScanModal: React.FC<ReceiptScanModalProps> = ({ visible, onClose }) => {
   const { isDarkMode, currency, accounts, categories, addTransaction } = useExpenseStore();
   const theme = isDarkMode ? darkTheme : lightTheme;
+  const currentCurrency = CURRENCIES.find((c) => c.code === currency) || CURRENCIES[0];
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScannedReceiptResult | null>(null);
+
+  // Editable fields for reviewed extracted data
+  const [merchant, setMerchant] = useState('');
+  const [amountStr, setAmountStr] = useState('');
+  const [date, setDate] = useState('');
+  const [selectedCatId, setSelectedCatId] = useState('');
+  const [showRawText, setShowRawText] = useState(false);
 
   const defaultAccount = accounts.find((a) => a.isDefault) || accounts[0];
 
@@ -45,10 +66,11 @@ export const ReceiptScanModal: React.FC<ReceiptScanModalProps> = ({ visible, onC
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         quality: 0.8,
+        base64: true,
       });
 
       if (!result.canceled && result.assets.length > 0) {
-        processReceipt(result.assets[0].uri);
+        processReceipt(result.assets[0].uri, result.assets[0].base64);
       }
     } catch (error) {
       console.error(error);
@@ -68,10 +90,11 @@ export const ReceiptScanModal: React.FC<ReceiptScanModalProps> = ({ visible, onC
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         quality: 0.8,
+        base64: true,
       });
 
       if (!result.canceled && result.assets.length > 0) {
-        processReceipt(result.assets[0].uri);
+        processReceipt(result.assets[0].uri, result.assets[0].base64);
       }
     } catch (error) {
       console.error(error);
@@ -79,37 +102,54 @@ export const ReceiptScanModal: React.FC<ReceiptScanModalProps> = ({ visible, onC
     }
   };
 
-  const processReceipt = async (uri: string, hint?: string) => {
+  const processReceipt = async (uri: string, base64?: string | null) => {
     setImageUri(uri);
     setIsScanning(true);
     setScanResult(null);
 
     try {
-      const result = await parseReceiptImage(uri, hint);
+      const result = await parseReceiptImage(uri, base64 || undefined);
       setScanResult(result);
+      setMerchant(result.merchant);
+      setAmountStr(result.totalAmount > 0 ? result.totalAmount.toFixed(2) : '');
+      setDate(result.date);
+      setSelectedCatId(result.suggestedCategoryId);
+      triggerSuccessHaptic();
     } catch (error) {
-      Alert.alert('Scan Failed', 'Could not read receipt information.');
+      Alert.alert('Scan Failed', 'Could not read receipt image. You can enter details manually.');
+      const today = new Date().toISOString().split('T')[0];
+      setMerchant('Receipt Expense');
+      setAmountStr('');
+      setDate(today);
+      setSelectedCatId('cat-groceries');
     } finally {
       setIsScanning(false);
     }
   };
 
-  // Commit extracted receipt to transactions
+  // Commit extracted & verified receipt to transactions
   const handleConfirmExpense = () => {
-    if (!scanResult || !defaultAccount) return;
+    const parsedAmount = parseFloat(amountStr);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      Alert.alert('Invalid Amount', 'Please verify the numeric amount.');
+      return;
+    }
+
+    if (!defaultAccount) return;
 
     addTransaction({
       type: 'expense',
-      amount: scanResult.totalAmount,
-      categoryId: scanResult.suggestedCategoryId,
+      amount: parsedAmount,
+      categoryId: selectedCatId || 'cat-groceries',
       accountId: defaultAccount.id,
-      date: scanResult.date,
-      note: scanResult.merchant,
-      tags: scanResult.suggestedTags,
+      date: date || new Date().toISOString().split('T')[0],
+      note: merchant.trim() || 'Receipt Expense',
+      tags: scanResult?.suggestedTags || ['receipt'],
       receiptUri: imageUri || undefined,
     });
 
-    Alert.alert('Success', `Logged ${formatCurrency(scanResult.totalAmount, currency)} for ${scanResult.merchant}!`);
+    triggerSuccessHaptic();
+    Alert.alert('Logged Successfully', `${merchant || 'Expense'} of ${formatCurrency(parsedAmount, currency)} saved.`);
     handleReset();
     onClose();
   };
@@ -118,9 +158,13 @@ export const ReceiptScanModal: React.FC<ReceiptScanModalProps> = ({ visible, onC
     setImageUri(null);
     setScanResult(null);
     setIsScanning(false);
+    setMerchant('');
+    setAmountStr('');
+    setDate('');
+    setShowRawText(false);
   };
 
-  const matchedCat = categories.find((c) => c.id === scanResult?.suggestedCategoryId);
+  const expenseCategories = categories.filter((c) => c.type === 'expense');
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
@@ -135,7 +179,7 @@ export const ReceiptScanModal: React.FC<ReceiptScanModalProps> = ({ visible, onC
               <Text style={[styles.modalTitle, { color: theme.text }]}>SpendSnap OCR</Text>
               <View style={[styles.sparkleBadge, { backgroundColor: '#EEF2FF' }]}>
                 <Sparkles size={12} color="#6366F1" />
-                <Text style={styles.sparkleText}>Smart AI</Text>
+                <Text style={styles.sparkleText}>Vision Scanner</Text>
               </View>
             </View>
             <TouchableOpacity onPress={handleReset} style={styles.closeBtn}>
@@ -144,14 +188,14 @@ export const ReceiptScanModal: React.FC<ReceiptScanModalProps> = ({ visible, onC
           </View>
 
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-            {/* If no image selected yet: choose photo */}
+            {/* If no image selected yet */}
             {!imageUri && (
               <View style={styles.pickSection}>
                 <View style={[styles.cameraPlaceholder, { backgroundColor: theme.surfaceSubtle }]}>
                   <Camera size={44} color={theme.primary} />
-                  <Text style={[styles.pickTitle, { color: theme.text }]}>Snap or Upload Receipt</Text>
+                  <Text style={[styles.pickTitle, { color: theme.text }]}>Capture or Pick Receipt</Text>
                   <Text style={[styles.pickSub, { color: theme.textSecondary }]}>
-                    AI will instantly extract merchant, items, date, and calculate the total amount.
+                    Take a clear photo of your bill, receipt, or invoice. Real OCR reads merchant, total, date, and items.
                   </Text>
                 </View>
 
@@ -181,51 +225,124 @@ export const ReceiptScanModal: React.FC<ReceiptScanModalProps> = ({ visible, onC
               <View style={styles.scanningBox}>
                 <ActivityIndicator size="large" color={theme.primary} />
                 <Text style={[styles.scanningTitle, { color: theme.text }]}>
-                  Analyzing Receipt Image...
+                  Reading Receipt Text via OCR...
                 </Text>
                 <Text style={[styles.scanningSub, { color: theme.textMuted }]}>
-                  Extracting line items, merchant name, and total amount
+                  Scanning line items, store name, date, and calculating total
                 </Text>
               </View>
             )}
 
-            {/* Scan Results View */}
+            {/* Scan Results & Editable Review View */}
             {scanResult && !isScanning && (
               <View style={styles.resultsContainer}>
                 {/* Result Card */}
                 <View style={[styles.resultCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                  <View style={styles.resultHeader}>
-                    <View>
-                      <Text style={[styles.resultMerchant, { color: theme.text }]}>
-                        {scanResult.merchant}
-                      </Text>
-                      <Text style={[styles.resultDate, { color: theme.textMuted }]}>
-                        {scanResult.date} • {matchedCat?.name || 'Expense'}
-                      </Text>
-                    </View>
+                  <View style={styles.reviewHeader}>
+                    <Text style={[styles.reviewHeaderTitle, { color: theme.textSecondary }]}>
+                      REVIEW & CONFIRM DETAILS
+                    </Text>
                     <View style={styles.confidenceBadge}>
-                      <CheckCircle2 size={14} color="#10B981" />
-                      <Text style={styles.confidenceText}>
-                        {(scanResult.confidence * 100).toFixed(0)}% Match
-                      </Text>
+                      <CheckCircle2 size={13} color="#16A34A" />
+                      <Text style={styles.confidenceText}>OCR Scanned</Text>
                     </View>
                   </View>
 
-                  {/* Total Amount Display */}
-                  <View style={styles.amountBanner}>
-                    <Text style={[styles.amountBannerLabel, { color: theme.textMuted }]}>
-                      EXTRACTED TOTAL
+                  {/* Editable Total Amount */}
+                  <View style={styles.fieldSection}>
+                    <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>
+                      TOTAL AMOUNT ({currentCurrency.symbol})
                     </Text>
-                    <Text style={[styles.amountBannerVal, { color: '#F43F5E' }]}>
-                      {formatCurrency(scanResult.totalAmount, currency)}
-                    </Text>
+                    <View style={[styles.amountInputRow, { backgroundColor: theme.surfaceSubtle }]}>
+                      <Text style={[styles.currencyPrefix, { color: '#F43F5E' }]}>
+                        {currentCurrency.symbol}
+                      </Text>
+                      <TextInput
+                        style={[styles.amountInput, { color: theme.text }]}
+                        keyboardType="decimal-pad"
+                        placeholder="0.00"
+                        placeholderTextColor={theme.textMuted}
+                        value={amountStr}
+                        onChangeText={setAmountStr}
+                      />
+                    </View>
                   </View>
 
-                  {/* Line Items Breakdown */}
+                  {/* Editable Merchant Name */}
+                  <View style={styles.fieldSection}>
+                    <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>MERCHANT / STORE</Text>
+                    <TextInput
+                      style={[
+                        styles.textInput,
+                        { backgroundColor: theme.surfaceSubtle, color: theme.text, borderColor: theme.border },
+                      ]}
+                      placeholder="Store Name"
+                      placeholderTextColor={theme.textMuted}
+                      value={merchant}
+                      onChangeText={setMerchant}
+                    />
+                  </View>
+
+                  {/* Editable Date */}
+                  <View style={styles.fieldSection}>
+                    <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>DATE (YYYY-MM-DD)</Text>
+                    <TextInput
+                      style={[
+                        styles.textInput,
+                        { backgroundColor: theme.surfaceSubtle, color: theme.text, borderColor: theme.border },
+                      ]}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor={theme.textMuted}
+                      value={date}
+                      onChangeText={setDate}
+                    />
+                  </View>
+
+                  {/* Category Selector */}
+                  <View style={styles.fieldSection}>
+                    <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>CATEGORY</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catChipsRow}>
+                      {expenseCategories.map((cat) => {
+                        const isSelected = selectedCatId === cat.id;
+                        return (
+                          <TouchableOpacity
+                            key={cat.id}
+                            style={[
+                              styles.catChip,
+                              {
+                                backgroundColor: isSelected ? cat.color : theme.surfaceSubtle,
+                                borderColor: isSelected ? cat.color : theme.border,
+                              },
+                            ]}
+                            onPress={() => {
+                              triggerLightHaptic();
+                              setSelectedCatId(cat.id);
+                            }}
+                          >
+                            <CategoryIcon
+                              name={cat.icon}
+                              size={14}
+                              color={isSelected ? '#FFFFFF' : cat.color}
+                            />
+                            <Text
+                              style={[
+                                styles.catChipText,
+                                { color: isSelected ? '#FFFFFF' : theme.text },
+                              ]}
+                            >
+                              {cat.name}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+
+                  {/* Itemized Lines (if detected) */}
                   {scanResult.items && scanResult.items.length > 0 && (
                     <View style={styles.itemsList}>
                       <Text style={[styles.itemsHeader, { color: theme.textSecondary }]}>
-                        DETECTED LINE ITEMS
+                        DETECTED ITEMS ({scanResult.items.length})
                       </Text>
                       {scanResult.items.map((item, index) => (
                         <View key={index} style={styles.itemRow}>
@@ -239,6 +356,37 @@ export const ReceiptScanModal: React.FC<ReceiptScanModalProps> = ({ visible, onC
                       ))}
                     </View>
                   )}
+
+                  {/* Collapsible Raw Text Inspector */}
+                  {scanResult.rawText ? (
+                    <View style={styles.rawTextContainer}>
+                      <TouchableOpacity
+                        style={styles.rawToggleBtn}
+                        onPress={() => setShowRawText(!showRawText)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.rawToggleLeft}>
+                          <FileText size={14} color={theme.textMuted} />
+                          <Text style={[styles.rawToggleText, { color: theme.textMuted }]}>
+                            {showRawText ? 'Hide Scanned Text' : 'View Raw Extracted Text'}
+                          </Text>
+                        </View>
+                        {showRawText ? (
+                          <ChevronUp size={16} color={theme.textMuted} />
+                        ) : (
+                          <ChevronDown size={16} color={theme.textMuted} />
+                        )}
+                      </TouchableOpacity>
+
+                      {showRawText && (
+                        <View style={[styles.rawTextBox, { backgroundColor: theme.surfaceSubtle }]}>
+                          <Text style={[styles.rawTextContent, { color: theme.textSecondary }]}>
+                            {scanResult.rawText}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  ) : null}
                 </View>
 
                 {/* Confirm and Log Button */}
@@ -246,7 +394,7 @@ export const ReceiptScanModal: React.FC<ReceiptScanModalProps> = ({ visible, onC
                   style={[styles.confirmBtn, { backgroundColor: theme.primary }]}
                   onPress={handleConfirmExpense}
                 >
-                  <Text style={styles.confirmBtnText}>Confirm & Log Expense</Text>
+                  <Text style={styles.confirmBtnText}>Confirm & Save Expense</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.retryBtn} onPress={handleReset}>
@@ -273,7 +421,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 16,
-    maxHeight: '90%',
+    maxHeight: '92%',
   },
   headerRow: {
     flexDirection: 'row',
@@ -310,7 +458,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 36,
+    paddingBottom: 40,
   },
   pickSection: {
     gap: 20,
@@ -334,7 +482,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
-    maxWidth: 280,
+    maxWidth: 290,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -377,18 +525,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 14,
   },
-  resultHeader: {
+  reviewHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    marginBottom: 4,
   },
-  resultMerchant: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  resultDate: {
-    fontSize: 12,
-    marginTop: 2,
+  reviewHeaderTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   confidenceBadge: {
     flexDirection: 'row',
@@ -404,21 +550,55 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-  amountBanner: {
-    padding: 12,
-    backgroundColor: 'rgba(244, 63, 94, 0.08)',
-    borderRadius: 12,
-    alignItems: 'center',
+  fieldSection: {
+    gap: 6,
   },
-  amountBannerLabel: {
+  fieldLabel: {
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  amountBannerVal: {
+  amountInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+  },
+  currencyPrefix: {
+    fontSize: 26,
+    fontWeight: '900',
+    marginRight: 6,
+  },
+  amountInput: {
     fontSize: 28,
     fontWeight: '900',
-    marginTop: 2,
+    flex: 1,
+  },
+  textInput: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    fontSize: 14,
+    borderWidth: 1,
+  },
+  catChipsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  catChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  catChipText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   itemsList: {
     gap: 8,
@@ -446,6 +626,37 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  rawTextContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#374151',
+    paddingTop: 10,
+    gap: 8,
+  },
+  rawToggleBtn: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  rawToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rawToggleText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  rawTextBox: {
+    borderRadius: 10,
+    padding: 10,
+    maxHeight: 140,
+  },
+  rawTextContent: {
+    fontSize: 11,
+    fontFamily: 'monospace',
+    lineHeight: 16,
+  },
   confirmBtn: {
     paddingVertical: 15,
     borderRadius: 16,
@@ -466,4 +677,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
